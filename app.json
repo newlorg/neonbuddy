@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "霓虹搭子 RushLab",
+    "slug": "rushlab-neon-buddy",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#F6FFF8"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.rushlab.neonbuddy"
+    },
+    "android": {
+      "package": "com.rushlab.neonbuddy"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "794bcf9a-293e-42d6-8ba7-9470b6d45fb1"
+      }
+    },
+    "plugins": [
+      "expo-asset"
+    ]
+  }
+}
