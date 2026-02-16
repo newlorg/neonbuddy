@@ -82,10 +82,60 @@ export interface KpiGoal {
   eventRate: number;
 }
 
+export interface MatchTelemetry {
+  allyPickups: number;
+  enemyPickups: number;
+  allyScores: number;
+  enemyScores: number;
+  allyTackles: number;
+  enemyTackles: number;
+  playerDashes: number;
+  playerInterceptAttempts: number;
+  playerInterceptSuccess: number;
+}
+
+export interface BattleStats {
+  totalPickups: number;
+  totalScores: number;
+  totalTackles: number;
+  totalDashes: number;
+  totalIntercepts: number;
+  buddyMatches: number;
+  buddyWins: number;
+  styleMatches: number;
+  styleHighlights: number;
+  bestStyleScore: number;
+}
+
+export type StyleGrade = "C" | "B" | "A" | "S";
+
+export interface MatchRewards {
+  credit: number;
+  ticket: number;
+  passExp: number;
+  buddyBondGain: number;
+}
+
+export interface LastMatchReport {
+  playedAt: number;
+  result: "win" | "loss";
+  allyScore: number;
+  enemyScore: number;
+  buddyId: string | null;
+  loadout: WorkshopLoadout;
+  styleScore: number;
+  styleGrade: StyleGrade;
+  telemetry: MatchTelemetry;
+  rewards: MatchRewards;
+}
+
 export interface AppState {
   locale: Locale;
   activeTab: AppTab;
   match: MatchState;
+  matchTelemetry: MatchTelemetry;
+  battleStats: BattleStats;
+  lastMatch: LastMatchReport | null;
   buddies: BuddyProfile[];
   queuedBuddyId: string | null;
   options: WorkshopOptions;

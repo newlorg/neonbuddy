@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { NeonCard } from "../components/NeonCard";
 import { useApp } from "../store/AppContext";
@@ -18,11 +18,7 @@ function OptionSection({ label, current, options, onSelect }: SectionProps) {
       <Text style={styles.sectionLabel}>{label}</Text>
       <View style={styles.chips}>
         {options.map((option) => (
-          <TouchableOpacity
-            key={option}
-            style={[styles.chip, current === option && styles.chipActive]}
-            onPress={() => onSelect(option)}
-          >
+          <TouchableOpacity key={option} style={[styles.chip, current === option && styles.chipActive]} onPress={() => onSelect(option)}>
             <Text style={[styles.chipText, current === option && styles.chipTextActive]}>{option}</Text>
           </TouchableOpacity>
         ))}
@@ -31,8 +27,24 @@ function OptionSection({ label, current, options, onSelect }: SectionProps) {
   );
 }
 
-function buildHighlightCard(loadout: WorkshopLoadout): string {
-  return `10秒高光：${loadout.title} 触发 ${loadout.emote}，配上 ${loadout.spray} + ${loadout.sticker}，完成终局翻盘。`;
+function getTier(options: string[], selected: string): number {
+  return Math.max(0, options.indexOf(selected));
+}
+
+function buildHighlightCard(
+  loadout: WorkshopLoadout,
+  isZh: boolean,
+  context: { buddyName: string | null; styleGrade: string | null; allyScore: number | null; enemyScore: number | null }
+): string {
+  const scorePart =
+    context.allyScore !== null && context.enemyScore !== null ? `${context.allyScore}:${context.enemyScore}` : isZh ? "未开局" : "No match yet";
+  const gradePart = context.styleGrade ?? (isZh ? "待评定" : "Pending");
+  const buddyPart = context.buddyName ?? (isZh ? "未组搭子" : "No buddy");
+
+  if (isZh) {
+    return `高光回放：${loadout.title} 用 ${loadout.emote} 触发关键拦截，配装 ${loadout.spray} + ${loadout.sticker}，搭子 ${buddyPart}，本局比分 ${scorePart}，风格评级 ${gradePart}。`;
+  }
+  return `Highlight: ${loadout.title} triggered a clutch ${loadout.emote} play with ${loadout.spray} + ${loadout.sticker}, buddy ${buddyPart}, final ${scorePart}, style grade ${gradePart}.`;
 }
 
 export function WorkshopScreen() {
@@ -40,20 +52,35 @@ export function WorkshopScreen() {
   const isZh = state.locale === "zh-CN";
   const [highlightText, setHighlightText] = useState("");
 
+  const sprayTier = getTier(state.options.sprays, state.loadout.spray);
+  const stickerTier = getTier(state.options.stickers, state.loadout.sticker);
+  const emoteTier = getTier(state.options.emotes, state.loadout.emote);
+  const titleTier = getTier(state.options.titles, state.loadout.title);
+
+  const linkedBuff = useMemo(() => {
+    const speedPct = Math.round((0.02 * sprayTier + 0.015 * titleTier) * 100);
+    const tacklePct = Math.round((0.03 * stickerTier + 0.02 * emoteTier) * 100);
+    const interceptRange = titleTier * 4 + emoteTier * 2;
+    const passXp = 2 + titleTier + emoteTier;
+    return { speedPct, tacklePct, interceptRange, passXp };
+  }, [emoteTier, sprayTier, titleTier, stickerTier]);
+
+  const currentBuddy = state.queuedBuddyId ? state.buddies.find((item) => item.id === state.queuedBuddyId) ?? null : null;
+
   return (
     <ScrollView contentContainerStyle={styles.content}>
       <NeonCard>
-        <Text style={styles.title}>{isZh ? "潮流工坊（高表达系统）" : "Trend Workshop (Style Expression)"}</Text>
+        <Text style={styles.title}>{isZh ? "潮流工坊（实战联动配置台）" : "Trend Workshop (Battle-linked Setup)"}</Text>
         <Text style={styles.desc}>
           {isZh
-            ? "自由组合喷漆、贴纸、动作与称号，沉淀个人风格资产，用于主页和分享传播。"
-            : "Combine spray, stickers, emotes and titles into a persistent identity for profile and sharing."}
+            ? "这里不只改外观：每个配装会影响实战手感、搭子推荐和赛季收益。"
+            : "This is no longer cosmetic-only. Loadout now affects combat feel, buddy recommendation, and season gains."}
         </Text>
       </NeonCard>
 
       <NeonCard>
         <OptionSection
-          label={isZh ? "喷漆风格" : "Spray"}
+          label={isZh ? "喷涂风格" : "Spray"}
           current={state.loadout.spray}
           options={state.options.sprays}
           onSelect={(value) => dispatch({ type: "SET_LOADOUT", field: "spray", value })}
@@ -79,6 +106,28 @@ export function WorkshopScreen() {
       </NeonCard>
 
       <NeonCard>
+        <Text style={styles.sectionLabel}>{isZh ? "实战联动加成" : "Combat Link Bonuses"}</Text>
+        <View style={styles.linkGrid}>
+          <View style={styles.linkItem}>
+            <Text style={styles.linkLabel}>{isZh ? "移速加成" : "Move Speed"}</Text>
+            <Text style={styles.linkValue}>+{linkedBuff.speedPct}%</Text>
+          </View>
+          <View style={styles.linkItem}>
+            <Text style={styles.linkLabel}>{isZh ? "拦截范围" : "Intercept Range"}</Text>
+            <Text style={styles.linkValue}>+{linkedBuff.interceptRange}</Text>
+          </View>
+          <View style={styles.linkItem}>
+            <Text style={styles.linkLabel}>{isZh ? "拦截成功率" : "Tackle Chance"}</Text>
+            <Text style={styles.linkValue}>+{linkedBuff.tacklePct}%</Text>
+          </View>
+          <View style={styles.linkItem}>
+            <Text style={styles.linkLabel}>{isZh ? "赛季XP增益" : "Pass XP Boost"}</Text>
+            <Text style={styles.linkValue}>+{linkedBuff.passXp}</Text>
+          </View>
+        </View>
+      </NeonCard>
+
+      <NeonCard>
         <Text style={styles.sectionLabel}>{isZh ? "个人套装预览" : "Loadout Preview"}</Text>
         <View style={styles.preview}>
           <Text style={styles.previewMain}>{state.loadout.title}</Text>
@@ -89,14 +138,27 @@ export function WorkshopScreen() {
 
         <TouchableOpacity
           style={styles.primaryButton}
-          onPress={() => setHighlightText(buildHighlightCard(state.loadout))}
+          onPress={() => {
+            setHighlightText(
+              buildHighlightCard(state.loadout, isZh, {
+                buddyName: currentBuddy?.name ?? null,
+                styleGrade: state.lastMatch?.styleGrade ?? null,
+                allyScore: state.lastMatch?.allyScore ?? null,
+                enemyScore: state.lastMatch?.enemyScore ?? null
+              })
+            );
+            dispatch({ type: "PUBLISH_HIGHLIGHT" });
+          }}
         >
-          <Text style={styles.primaryButtonText}>{isZh ? "生成高光回放卡文案" : "Generate Highlight Copy"}</Text>
+          <Text style={styles.primaryButtonText}>{isZh ? "发布高光回放文案（联动赛季收益）" : "Publish Highlight Copy (Season-linked reward)"}</Text>
         </TouchableOpacity>
 
         {highlightText ? (
           <View style={styles.highlightBox}>
             <Text style={styles.highlightText}>{highlightText}</Text>
+            <Text style={styles.highlightMeta}>
+              {isZh ? "累计已发布高光：" : "Total published highlights:"} {state.battleStats.styleHighlights}
+            </Text>
           </View>
         ) : null}
       </NeonCard>
@@ -155,6 +217,30 @@ const styles = StyleSheet.create({
   chipTextActive: {
     color: "#FFFFFF"
   },
+  linkGrid: {
+    marginTop: 9,
+    gap: 8
+  },
+  linkItem: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.sm,
+    backgroundColor: "#EDFFF8",
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center"
+  },
+  linkLabel: {
+    color: colors.subText,
+    fontSize: 12
+  },
+  linkValue: {
+    color: colors.electric,
+    fontSize: 13,
+    fontWeight: "900"
+  },
   preview: {
     marginTop: 8,
     borderWidth: 1,
@@ -179,12 +265,14 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     backgroundColor: colors.accent,
     alignItems: "center",
-    justifyContent: "center"
+    justifyContent: "center",
+    paddingHorizontal: 12
   },
   primaryButtonText: {
     color: "#FFFFFF",
     fontWeight: "800",
-    fontSize: 14
+    fontSize: 14,
+    textAlign: "center"
   },
   highlightBox: {
     marginTop: 10,
@@ -198,5 +286,11 @@ const styles = StyleSheet.create({
     color: colors.text,
     lineHeight: 19,
     fontSize: 13
+  },
+  highlightMeta: {
+    marginTop: 7,
+    color: colors.electric,
+    fontSize: 12,
+    fontWeight: "800"
   }
 });

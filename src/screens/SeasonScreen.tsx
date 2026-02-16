@@ -4,12 +4,18 @@ import { NeonCard } from "../components/NeonCard";
 import { useApp } from "../store/AppContext";
 import { colors, radius } from "../theme/tokens";
 
-function rewardLabel(currency: "credit" | "ticket" | "diamond", amount: number): string {
-  const names = {
+function rewardLabel(isZh: boolean, currency: "credit" | "ticket" | "diamond", amount: number): string {
+  const zhNames = {
     credit: "信用点",
     ticket: "潮流券",
     diamond: "晶钻"
   };
+  const enNames = {
+    credit: "Credit",
+    ticket: "Ticket",
+    diamond: "Diamond"
+  };
+  const names = isZh ? zhNames : enNames;
   return `${names[currency]} +${amount}`;
 }
 
@@ -17,14 +23,19 @@ export function SeasonScreen() {
   const { state, dispatch } = useApp();
   const isZh = state.locale === "zh-CN";
 
+  const duoWinRate =
+    state.battleStats.buddyMatches === 0
+      ? 0
+      : Math.round((state.battleStats.buddyWins / state.battleStats.buddyMatches) * 100);
+
   return (
     <ScrollView contentContainerStyle={styles.content}>
       <NeonCard>
         <Text style={styles.title}>{isZh ? "赛季成长与商业化" : "Season Growth & Monetization"}</Text>
         <Text style={styles.desc}>
           {isZh
-            ? "主收入走通行证和外观，不出售破坏公平的战斗数值，保证竞技环境稳定。"
-            : "Revenue centers on pass + cosmetics, while keeping combat balance untouched."}
+            ? "你在实战中的对抗行为，会直接驱动赛季经验、任务推进和货币收益。"
+            : "Live match behavior now directly drives pass XP, mission progression, and currency rewards."}
         </Text>
         <View style={styles.walletRow}>
           <View style={styles.walletItem}>
@@ -54,9 +65,66 @@ export function SeasonScreen() {
         </View>
         <Text style={styles.tip}>
           {isZh
-            ? "对局、双排、社区互动都会累积通行证经验。"
-            : "Match completion, duo queue, and community interactions all grant pass XP."}
+            ? "高光发布、搭子双排和实战拦截都会给通行证加速。"
+            : "Highlight publishing, buddy duo play, and intercept actions all accelerate your pass."}
         </Text>
+      </NeonCard>
+
+      <NeonCard>
+        <Text style={styles.sectionTitle}>{isZh ? "实战联动统计" : "Battle-linked Metrics"}</Text>
+        <View style={styles.metricsGrid}>
+          <View style={styles.metricItem}>
+            <Text style={styles.metricLabel}>{isZh ? "抢芯片" : "Pickups"}</Text>
+            <Text style={styles.metricValue}>{state.battleStats.totalPickups}</Text>
+          </View>
+          <View style={styles.metricItem}>
+            <Text style={styles.metricLabel}>{isZh ? "护送得分" : "Escort Scores"}</Text>
+            <Text style={styles.metricValue}>{state.battleStats.totalScores}</Text>
+          </View>
+          <View style={styles.metricItem}>
+            <Text style={styles.metricLabel}>{isZh ? "拦截成功" : "Intercepts"}</Text>
+            <Text style={styles.metricValue}>{state.battleStats.totalIntercepts}</Text>
+          </View>
+          <View style={styles.metricItem}>
+            <Text style={styles.metricLabel}>{isZh ? "冲刺次数" : "Dashes"}</Text>
+            <Text style={styles.metricValue}>{state.battleStats.totalDashes}</Text>
+          </View>
+          <View style={styles.metricItem}>
+            <Text style={styles.metricLabel}>{isZh ? "双排场次" : "Duo Matches"}</Text>
+            <Text style={styles.metricValue}>
+              {state.battleStats.buddyMatches} · WR {duoWinRate}%
+            </Text>
+          </View>
+          <View style={styles.metricItem}>
+            <Text style={styles.metricLabel}>{isZh ? "最高风格分" : "Best Style Score"}</Text>
+            <Text style={styles.metricValue}>{state.battleStats.bestStyleScore}</Text>
+          </View>
+        </View>
+      </NeonCard>
+
+      <NeonCard>
+        <Text style={styles.sectionTitle}>{isZh ? "最近一局结算拆解" : "Latest Match Reward Breakdown"}</Text>
+        {state.lastMatch ? (
+          <View style={styles.lastMatchBox}>
+            <Text style={styles.lastMatchMain}>
+              {isZh ? "结果" : "Result"}: {state.lastMatch.allyScore}:{state.lastMatch.enemyScore} ·{" "}
+              {state.lastMatch.result === "win" ? (isZh ? "胜利" : "Win") : isZh ? "失利" : "Loss"}
+            </Text>
+            <Text style={styles.lastMatchMeta}>
+              {isZh ? "风格评级" : "Style Grade"} {state.lastMatch.styleGrade} · {isZh ? "风格分" : "Style Score"}{" "}
+              {state.lastMatch.styleScore}
+            </Text>
+            <Text style={styles.lastMatchMeta}>
+              +{state.lastMatch.rewards.credit} {isZh ? "信用点" : "credit"} · +{state.lastMatch.rewards.ticket}{" "}
+              {isZh ? "潮流券" : "ticket"} · +{state.lastMatch.rewards.passExp} XP
+            </Text>
+            <Text style={styles.lastMatchMeta}>
+              {isZh ? "搭子亲密收益" : "Buddy Bond Gain"} +{state.lastMatch.rewards.buddyBondGain}
+            </Text>
+          </View>
+        ) : (
+          <Text style={styles.tip}>{isZh ? "还没有完整对局结算。先去打一局。" : "No full match settlement yet. Play one round first."}</Text>
+        )}
       </NeonCard>
 
       <NeonCard>
@@ -69,7 +137,7 @@ export function SeasonScreen() {
                 <View style={styles.missionMain}>
                   <Text style={styles.missionTitle}>{mission.title}</Text>
                   <Text style={styles.missionMeta}>
-                    {mission.progress}/{mission.target} · {rewardLabel(mission.reward.currency, mission.reward.amount)}
+                    {mission.progress}/{mission.target} · {rewardLabel(isZh, mission.reward.currency, mission.reward.amount)}
                   </Text>
                 </View>
                 <TouchableOpacity
@@ -92,21 +160,11 @@ export function SeasonScreen() {
         <Text style={styles.desc}>
           {isZh
             ? "仅用于赛后额外奖励、任务加速和回流补给，不插入竞技主流程。"
-            : "Used only for extra post-match rewards and mission boost, not inside core PvP flow."}
+            : "Used for extra post-match rewards and mission boosts, never inserted into core PvP flow."}
         </Text>
         <TouchableOpacity style={styles.adButton} onPress={() => dispatch({ type: "WATCH_AD_REWARD" })}>
           <Text style={styles.adButtonText}>{isZh ? "观看激励视频（模拟）" : "Watch Rewarded Video (Mock)"}</Text>
         </TouchableOpacity>
-      </NeonCard>
-
-      <NeonCard>
-        <Text style={styles.sectionTitle}>{isZh ? "首发 90 天 KPI 目标" : "Launch 90-Day KPI Targets"}</Text>
-        <Text style={styles.kpiText}>
-          D1 {state.kpi.d1}% · D7 {state.kpi.d7}% · D30 {state.kpi.d30}% ·{" "}
-          {isZh ? "开黑渗透" : "Squad Penetration"} {state.kpi.pairRate}% · {isZh ? "付费转化" : "Pay Conversion"}{" "}
-          {state.kpi.payRate}% · {isZh ? "通行证购买率" : "Pass Buy Rate"} {state.kpi.passRate}% ·{" "}
-          {isZh ? "赛季活动参与率" : "Season Participation"} {state.kpi.eventRate}%
-        </Text>
       </NeonCard>
     </ScrollView>
   );
@@ -183,6 +241,48 @@ const styles = StyleSheet.create({
     color: colors.subText,
     fontSize: 12
   },
+  metricsGrid: {
+    marginTop: 10,
+    gap: 8
+  },
+  metricItem: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.sm,
+    backgroundColor: "#F1FFF8",
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center"
+  },
+  metricLabel: {
+    color: colors.subText,
+    fontSize: 12
+  },
+  metricValue: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: "800"
+  },
+  lastMatchBox: {
+    marginTop: 9,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    backgroundColor: "#F3FFF9",
+    padding: 10,
+    gap: 5
+  },
+  lastMatchMain: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: "900"
+  },
+  lastMatchMeta: {
+    color: colors.subText,
+    fontSize: 12
+  },
   missionList: {
     marginTop: 10,
     gap: 8
@@ -244,11 +344,5 @@ const styles = StyleSheet.create({
   adButtonText: {
     color: "#FFFFFF",
     fontWeight: "800"
-  },
-  kpiText: {
-    marginTop: 8,
-    color: colors.subText,
-    fontSize: 12,
-    lineHeight: 18
   }
 });
